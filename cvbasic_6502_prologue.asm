@@ -22,16 +22,25 @@ BIOS_NMI_RESET_ADDR:	EQU $F808
 BIOS_READ_CONTROLLERS:	EQU $FA00
 BIOS_WRITE_PSG:		EQU $FE77
 
-
+if CREATIVISION
 VDP_WRITE_DATA:   EQU $3000
 VDP_WRITE_REG:    EQU $3001
 VDP_READ_DATA:    EQU $2000
 VDP_READ_STATUS:  EQU $2001
+endif
+
+if HBC56
+VDP_WRITE_DATA:   EQU $7f10
+VDP_WRITE_REG:    EQU $7f11
+VDP_READ_DATA:    EQU $7f10
+VDP_READ_STATUS:  EQU $7f11
+endif
 
 	;
 	; Platforms supported:
 	; o Vtech Creativision.
 	; o Dick Smith's Wizzard.
+	; o Troy's HBC-56
 	;
 
 	;

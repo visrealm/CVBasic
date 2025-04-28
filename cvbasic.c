@@ -55,6 +55,7 @@ static enum {
     PV2000,
     TI994A,
     NABU,
+    HBC56,
     TOTAL_TARGETS
 } machine;
 
@@ -116,6 +117,9 @@ static struct console {
     {"nabu",    "-cpm",     "NABU PC (64K RAM)",
         "Nabu PC",
         0,      0xe000, 0,       0xa0,   0xa0, 0,    CPU_Z80},
+    {"hbc56","-","Troy's HBC-56 (65C02, 32K RAM, 32K ROM)",
+        "HBC-56",
+        0x0050, 0x01ff, 0x7000,  0x7f0,  0x7f0,    0,    CPU_6502},
 };
 
 static int err_code;
@@ -1294,8 +1298,8 @@ struct node *evaluate_level_7(int *type)
             }
             get_lex();
             *type = TYPE_8;
-            if ((machine == CREATIVISION)||(machine == TI994A))
-                emit_warning("Ignoring INP (not supported in Creativision or TI994A)");
+            if ((machine == CREATIVISION)||(machine == HBC56)||(machine == TI994A))
+                emit_warning("Ignoring INP (not supported in 6502 or 9900)");
             return tree;
         }
         if (strcmp(name, "PEEK") == 0) {
@@ -2901,7 +2905,7 @@ void compile_statement(int check_for_else)
                 generic_call("cls");
             } else if (strcmp(name, "WAIT") == 0) {
                 get_lex();
-                if (machine == SORD || machine == CREATIVISION || machine == EINSTEIN || machine == TI994A)
+                if (machine == SORD || machine == CREATIVISION || machine == HBC56 || machine == EINSTEIN || machine == TI994A)
                     generic_call("wait");
                 else
                     cpuz80_noop("HALT");
@@ -5273,7 +5277,7 @@ void compile_statement(int check_for_else)
                         emit_error("BANK ROM used twice");
                         get_lex();
                     } else {
-                        if (machine == SVI || machine == SORD || machine == MEMOTECH || machine == CREATIVISION || machine == EINSTEIN || machine == PV2000) {
+                        if (machine == SVI || machine == SORD || machine == MEMOTECH || machine == CREATIVISION || machine == HBC56 || machine == EINSTEIN || machine == PV2000) {
                             emit_error("Bank-switching not supported with current platform");
                         } else {
                             bank_switching = 1;
@@ -5609,7 +5613,7 @@ int process_variables(void)
     int size;
     int address;
     
-    if (machine == CREATIVISION || machine == TI994A)
+    if (machine == CREATIVISION || machine == HBC56 || machine == TI994A)
         address = consoles[machine].base_ram;
     bytes_used = 0;
     for (c = 0; c < HASH_PRIME; c++) {
@@ -5947,6 +5951,8 @@ int main(int argc, char *argv[])
     fprintf(output, "PV2000:\tequ %d\n", (machine == PV2000) ? 1 : 0);
     fprintf(output, "TI99:\tequ %d\n", (machine == TI994A) ? 1 : 0);
     fprintf(output, "NABU:\tequ %d\n", (machine == NABU) ? 1 : 0);
+    fprintf(output, "CREATIVISION:\tequ %d\n", (machine == CREATIVISION) ? 1 : 0);
+    fprintf(output, "HBC56:\tequ %d\n", (machine == HBC56) ? 1 : 0);
     fprintf(output, "\n");
     fprintf(output, "CVBASIC_MUSIC_PLAYER:\tequ %d\n", music_used);
     fprintf(output, "CVBASIC_COMPRESSION:\tequ %d\n", compression_used);
