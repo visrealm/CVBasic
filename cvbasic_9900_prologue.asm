@@ -434,6 +434,7 @@ print_char2
     b *r6
 print_char
     mov r11,r6
+    swpb r2
     b @print_char2
 
 ; Load sprite definitions: Sprite number in R4, CPU data in R0, count of sprites in R5 (MSB)
