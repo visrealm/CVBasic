@@ -993,6 +993,14 @@ int evaluate_expression(int cast, int to_type, int label)
 }
 
 /*
+ ** Check for macro replacement
+ */
+void check_for_macro(void) {
+    if (lex == C_NAME && macro_search(name) != NULL)  /* Function (macro) */
+        replace_macro();
+}
+
+/*
  ** Expression evaluation level 0 (OR)
  */
 struct node *evaluate_level_0(int *type)
@@ -1001,10 +1009,12 @@ struct node *evaluate_level_0(int *type)
     struct node *right;
     int type2;
     
+    check_for_macro();
     left = evaluate_level_1(type);
     while (1) {
         if (lex == C_NAME && strcmp(name, "OR") == 0) {
             get_lex();
+            check_for_macro();
             right = evaluate_level_1(&type2);
             *type = mix_types(&left, *type, &right, type2);
             if ((*type & MAIN_TYPE) == TYPE_8)
@@ -1027,10 +1037,12 @@ struct node *evaluate_level_1(int *type)
     struct node *right;
     int type2;
     
+    check_for_macro();
     left = evaluate_level_2(type);
     while (1) {
         if (lex == C_NAME && strcmp(name, "XOR") == 0) {
             get_lex();
+            check_for_macro();
             right = evaluate_level_2(&type2);
             *type = mix_types(&left, *type, &right, type2);
             if ((*type & MAIN_TYPE) == TYPE_8)
@@ -1053,10 +1065,12 @@ struct node *evaluate_level_2(int *type)
     struct node *right;
     int type2;
     
+    check_for_macro();
     left = evaluate_level_3(type);
     while (1) {
         if (lex == C_NAME && strcmp(name, "AND") == 0) {
             get_lex();
+            check_for_macro();
             right = evaluate_level_3(&type2);
             *type = mix_types(&left, *type, &right, type2);
             if ((*type & MAIN_TYPE) == TYPE_8)
@@ -1083,6 +1097,7 @@ struct node *evaluate_level_3(int *type)
     enum node_type operation8s;
     enum node_type operation16s;
 
+    check_for_macro();
     left = evaluate_level_4(type);
     while (1) {
         if (lex == C_EQUAL) {
@@ -1119,6 +1134,7 @@ struct node *evaluate_level_3(int *type)
             break;
         }
         get_lex();
+        check_for_macro();
         right = evaluate_level_4(&type2);
         *type = mix_types(&left, *type, &right, type2);
         if ((*type & MAIN_TYPE) == TYPE_8)
@@ -1138,28 +1154,29 @@ struct node *evaluate_level_4(int *type)
     struct node *left;
     struct node *right;
     int type2;
-    
+    enum node_type operation8;
+    enum node_type operation16;
+
+    check_for_macro();
     left = evaluate_level_5(type);
     while (1) {
         if (lex == C_PLUS) {
-            get_lex();
-            right = evaluate_level_5(&type2);
-            *type = mix_types(&left, *type, &right, type2);
-            if ((*type & MAIN_TYPE) == TYPE_8)
-                left = node_create(N_PLUS8, 0, left, right);
-            else
-                left = node_create(N_PLUS16, 0, left, right);
+            operation8 = N_PLUS8;
+            operation16 = N_PLUS16;
         } else if (lex == C_MINUS) {
-            get_lex();
-            right = evaluate_level_5(&type2);
-            *type = mix_types(&left, *type, &right, type2);
-            if ((*type & MAIN_TYPE) == TYPE_8)
-                left = node_create(N_MINUS8, 0, left, right);
-            else
-                left = node_create(N_MINUS16, 0, left, right);
+            operation8 = N_MINUS8;
+            operation16 = N_MINUS16;
         } else {
             break;
         }
+        get_lex();
+        check_for_macro();
+        right = evaluate_level_5(&type2);
+        *type = mix_types(&left, *type, &right, type2);
+        if ((*type & MAIN_TYPE) == TYPE_8)
+            left = node_create(operation8, 0, left, right);
+        else
+            left = node_create(operation16, 0, left, right);
     }
     return left;
 }
@@ -1172,33 +1189,32 @@ struct node *evaluate_level_5(int *type)
     struct node *left;
     struct node *right;
     int type2;
-    
+    enum node_type operation16;
+    enum node_type operation16s;
+
+    check_for_macro();
     left = evaluate_level_6(type);
     while (1) {
         if (lex == C_MUL) {
-            get_lex();
-            right = evaluate_level_6(&type2);
-            *type = extend_types(&left, *type, &right, type2);
-            left = node_create(N_MUL16, 0, left, right);
+            operation16 = N_MUL16;
+            operation16s = N_MUL16;
         } else if (lex == C_DIV) {
-            get_lex();
-            right = evaluate_level_6(&type2);
-            *type = extend_types(&left, *type, &right, type2);
-            if (*type & TYPE_SIGNED)
-                left = node_create(N_DIV16S, 0, left, right);
-            else
-                left = node_create(N_DIV16, 0, left, right);
+            operation16 = N_DIV16;
+            operation16s = N_DIV16S;
         } else if (lex == C_MOD) {
-            get_lex();
-            right = evaluate_level_6(&type2);
-            *type = extend_types(&left, *type, &right, type2);
-            if (*type & TYPE_SIGNED)
-                left = node_create(N_MOD16S, 0, left, right);
-            else
-                left = node_create(N_MOD16, 0, left, right);
+            operation16 = N_MOD16;
+            operation16s = N_MOD16S;
         } else {
             break;
         }
+        get_lex();
+        check_for_macro();
+        right = evaluate_level_6(&type2);
+        *type = extend_types(&left, *type, &right, type2);
+        if (*type & TYPE_SIGNED)
+            left = node_create(operation16s, 0, left, right);
+        else
+            left = node_create(operation16, 0, left, right);
     }
     return left;
 }
@@ -1212,7 +1228,7 @@ struct node *evaluate_level_6(int *type)
     
     if (lex == C_MINUS) {
         get_lex();
-        
+        check_for_macro();
         left = evaluate_level_6(type);
         if ((*type & MAIN_TYPE) == TYPE_8)
             left = node_create(N_NEG8, 0, left, NULL);
@@ -1220,13 +1236,14 @@ struct node *evaluate_level_6(int *type)
             left = node_create(N_NEG16, 0, left, NULL);
     } else if (lex == C_NAME && strcmp(name, "NOT") == 0) {
         get_lex();
-        
+        check_for_macro();
         left = evaluate_level_6(type);
         if ((*type & MAIN_TYPE) == TYPE_8)
             left = node_create(N_NOT8, 0, left, NULL);
         else
             left = node_create(N_NOT16, 0, left, NULL);
     } else {
+        check_for_macro();
         left = evaluate_level_7(type);
     }
     return left;
@@ -1350,142 +1367,72 @@ struct node *evaluate_level_7(int *type)
             *type = TYPE_16 | TYPE_SIGNED;
             return tree;
         }
-        if (strcmp(name, "CONT") == 0) {
+        if (strcmp(name, "CONT") == 0 || strcmp(name, "CONT1") == 0 || strcmp(name, "CONT2") == 0) {
+            struct node *tree = NULL;
+            int cont;
+            
+            if (strcmp(name, "CONT1") == 0)
+                cont = 1;
+            else if (strcmp(name, "CONT2") == 0)
+                cont = 2;
+            else
+                cont = 0;
             get_lex();
             if (lex == C_PERIOD) {
                 get_lex();
+                if (strcmp(name, "KEY") == 0) {
+                    if (cont == 1) {
+                        tree = node_create(N_KEY1, 0, NULL, NULL);
+                    } else if (cont == 2) {
+                        tree = node_create(N_KEY2, 0, NULL, NULL);
+                    } else {
+                        tree = node_create(N_KEY1, 0, NULL, NULL);
+                        tree = node_create(N_AND8, 0, tree, node_create(N_KEY2, 0, NULL, NULL));
+                    }
+                } else {
+                    if (cont == 1) {
+                        tree = node_create(N_JOY1, 0, NULL, NULL);
+                    } else if (cont == 2) {
+                        tree = node_create(N_JOY2, 0, NULL, NULL);
+                    } else {
+                        tree = node_create(N_JOY1, 0, NULL, NULL);
+                        tree = node_create(N_OR8, 0, tree, node_create(N_JOY2, 0, NULL, NULL));
+                    }
+                }
                 if (lex != C_NAME) {
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
                     emit_error("CONT syntax error");
                 } else if (strcmp(name, "UP") == 0) {
                     get_lex();
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
-                    tree = node_create(N_OR8, 0, tree, node_create(N_JOY2, 0, NULL, NULL));
                     tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 1, NULL, NULL));
                 } else if (strcmp(name, "RIGHT") == 0) {
                     get_lex();
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
-                    tree = node_create(N_OR8, 0, tree, node_create(N_JOY2, 0, NULL, NULL));
                     tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 2, NULL, NULL));
                 } else if (strcmp(name, "DOWN") == 0) {
                     get_lex();
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
-                    tree = node_create(N_OR8, 0, tree, node_create(N_JOY2, 0, NULL, NULL));
                     tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 4, NULL, NULL));
                 } else if (strcmp(name, "LEFT") == 0) {
                     get_lex();
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
-                    tree = node_create(N_OR8, 0, tree, node_create(N_JOY2, 0, NULL, NULL));
                     tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 8, NULL, NULL));
                 } else if (strcmp(name, "BUTTON") == 0) {
                     get_lex();
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
-                    tree = node_create(N_OR8, 0, tree, node_create(N_JOY2, 0, NULL, NULL));
                     tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 0x40, NULL, NULL));
                 } else if (strcmp(name, "BUTTON2") == 0) {
                     get_lex();
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
-                    tree = node_create(N_OR8, 0, tree, node_create(N_JOY2, 0, NULL, NULL));
                     tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 0x80, NULL, NULL));
                 } else if (strcmp(name, "KEY") == 0) {
                     get_lex();
-                    tree = node_create(N_KEY1, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_KEY2, 0, NULL, NULL));
                 } else {
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
                     emit_error("Wrong field for CONT");
                 }
             } else {
-                tree = node_create(N_JOY1, 0, NULL, NULL);
-                tree = node_create(N_OR8, 0, tree, node_create(N_JOY2, 0, NULL, NULL));
-            }
-            *type = TYPE_8;
-            return tree;
-        }
-        if (strcmp(name, "CONT1") == 0) {
-            get_lex();
-            if (lex == C_PERIOD) {
-                get_lex();
-                if (lex != C_NAME) {
+                if (cont == 1) {
                     tree = node_create(N_JOY1, 0, NULL, NULL);
-                    emit_error("CONT1 syntax error");
-                } else if (strcmp(name, "UP") == 0) {
-                    get_lex();
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 1, NULL, NULL));
-                } else if (strcmp(name, "RIGHT") == 0) {
-                    get_lex();
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 2, NULL, NULL));
-                } else if (strcmp(name, "DOWN") == 0) {
-                    get_lex();
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 4, NULL, NULL));
-                } else if (strcmp(name, "LEFT") == 0) {
-                    get_lex();
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 8, NULL, NULL));
-                } else if (strcmp(name, "BUTTON") == 0) {
-                    get_lex();
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 0x40, NULL, NULL));
-                } else if (strcmp(name, "BUTTON2") == 0) {
-                    get_lex();
-                    tree = node_create(N_JOY1, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 0x80, NULL, NULL));
-                } else if (strcmp(name, "KEY") == 0) {
-                    get_lex();
-                    tree = node_create(N_KEY1, 0, NULL, NULL);
+                } else if (cont == 2) {
+                    tree = node_create(N_JOY2, 0, NULL, NULL);
                 } else {
-                    emit_error("Wrong field for CONT1");
                     tree = node_create(N_JOY1, 0, NULL, NULL);
+                    tree = node_create(N_OR8, 0, tree, node_create(N_JOY2, 0, NULL, NULL));
                 }
-            } else {
-                tree = node_create(N_JOY1, 0, NULL, NULL);
-            }
-            *type = TYPE_8;
-            return tree;
-        }
-        if (strcmp(name, "CONT2") == 0) {
-            get_lex();
-            if (lex == C_PERIOD) {
-                get_lex();
-                if (lex != C_NAME) {
-                    emit_error("CONT2 syntax error");
-                    tree = node_create(N_JOY2, 0, NULL, NULL);
-                } else if (strcmp(name, "UP") == 0) {
-                    get_lex();
-                    tree = node_create(N_JOY2, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 1, NULL, NULL));
-                } else if (strcmp(name, "RIGHT") == 0) {
-                    get_lex();
-                    tree = node_create(N_JOY2, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 2, NULL, NULL));
-                } else if (strcmp(name, "DOWN") == 0) {
-                    get_lex();
-                    tree = node_create(N_JOY2, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 4, NULL, NULL));
-                } else if (strcmp(name, "LEFT") == 0) {
-                    get_lex();
-                    tree = node_create(N_JOY2, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 8, NULL, NULL));
-                } else if (strcmp(name, "BUTTON") == 0) {
-                    get_lex();
-                    tree = node_create(N_JOY2, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 0x40, NULL, NULL));
-                } else if (strcmp(name, "BUTTON2") == 0) {
-                    get_lex();
-                    tree = node_create(N_JOY2, 0, NULL, NULL);
-                    tree = node_create(N_AND8, 0, tree, node_create(N_NUM8, 0x80, NULL, NULL));
-                } else if (strcmp(name, "KEY") == 0) {
-                    get_lex();
-                    tree = node_create(N_KEY2, 0, NULL, NULL);
-                } else {
-                    emit_error("Wrong field for CONT2");
-                    tree = node_create(N_JOY2, 0, NULL, NULL);
-                }
-            } else {
-                tree = node_create(N_JOY2, 0, NULL, NULL);
             }
             *type = TYPE_8;
             return tree;
@@ -1671,11 +1618,6 @@ struct node *evaluate_level_7(int *type)
             if (machine == SMS)
                 tree = node_create(N_DIV16, 0, tree, node_create(N_NUM16, 2, NULL, NULL));
             return tree;
-        }
-        if (macro_search(name) != NULL) {  /* Function (macro) */
-            if (replace_macro())
-                return node_create(N_NUM8, 0, NULL, NULL);
-            return evaluate_level_0(type);
         }
         if (lex_sneak_peek() == '(') {  /* Indexed access */
             int type2;
@@ -3486,7 +3428,9 @@ void compile_statement(int check_for_else)
                             } else if (target == CPU_9900) {
                                 cpu9900_2op("mov", "r0", "r2");
                             }
+                            generic_interrupt_disable();
                             generic_call("print_char");
+                            generic_interrupt_enable();
                         } else {
                             type = evaluate_expression(1, TYPE_16, 0);
                             if (target == CPU_9900)
@@ -4328,7 +4272,7 @@ void compile_statement(int check_for_else)
                         fprintf(output, "%s\n", temp);
                     } else if (target == CPU_9900) {
                         sprintf(temp, CONST_PREFIX "%s\tequ >%04x", assigned, c->value);
-                        cpu9900_label(temp);    // Hack
+                        cpu9900_label(temp);    /* Hack */
                     }
                     node_delete(tree);
                     tree = NULL;
@@ -5485,7 +5429,7 @@ void compile_statement(int check_for_else)
                     if (lex != C_NUM) {
                         emit_error("Bad syntax for BANK ROM");
                     } else if (value != 128 && value != 256 && value != 512 && value != 1024) {
-                        // TODO: TI can do 2MB as it stands, and 32MB with the scheme. But leaving at 1MB for now.
+                        /* TODO: TI can do 2MB as it stands, and 32MB with the scheme. But leaving at 1MB for now. */
                         emit_error("BANK ROM not 128, 256, 512 or 1024");
                         get_lex();
                     } else if (bank_switching != 0) {
@@ -5518,8 +5462,8 @@ void compile_statement(int check_for_else)
                         emit_error("Using BANK SELECT without BANK ROM");
                     } else {
                         if (machine == TI994A) {
-                            // the TI needs to use 8k banks, so our masks are different
-                            c+=2;   // reserving 3 banks (0,1,2) for 'fixed' space
+                            /* the TI needs to use 8k banks, so our masks are different */
+                            c += 2;   /* reserving 3 banks (0,1,2) for 'fixed' space */
 
                             if (bank_rom_size == 128)
                                 c &= 0x0f;
@@ -5530,7 +5474,7 @@ void compile_statement(int check_for_else)
                             else
                                 c &= 0x7f;
                             
-                            c = 0x6000+(c*2);   // ROM address to poke
+                            c = 0x6000+(c*2);   /* ROM address to poke */
                             sprintf(temp, "@>%x", c);
                             cpu9900_1op("clr", temp);
                         } else {
@@ -5584,8 +5528,8 @@ void compile_statement(int check_for_else)
                     } else {
                         d = c;
                         if (machine == TI994A) {
-                            // the TI needs to use 8k banks, so our masks are different
-                            c+=2;   // reserving 3 banks (0,1,2) for 'fixed' space
+                            /* the TI needs to use 8k banks, so our masks are different */
+                            c += 2;   /* reserving 3 banks (0,1,2) for 'fixed' space */
 
                             if (bank_rom_size == 128)
                                 c &= 0x0f;
@@ -5604,7 +5548,7 @@ void compile_statement(int check_for_else)
                             if (machine == COLECOVISION || machine == COLECOVISION_SGM)
                                 c--;
                             if (machine == TI994A)
-                                c+=2;   // reserving 3 banks (0,1,2) for 'fixed' space
+                                c+=2;   /* reserving 3 banks (0,1,2) for 'fixed' space */
                             if (bank_rom_size == 128)
                                 c &= 0x07;
                             else if (bank_rom_size == 256)
@@ -5734,11 +5678,29 @@ void compile_basic(void)
             } else {
                 label = label_add(name);
             }
+
+            /* first build up the label into temp */
             label->used |= LABEL_DEFINED;
             strcpy(temp, LABEL_PREFIX);
             strcat(temp, name);
-            generic_label(temp);
+
+            /*
+             ** We can look ahead a little - get_lex won't mess with temp[]
+             ** and we can use it to tell if the TI port needs to output an EVEN directive.
+             */
             get_lex();
+
+            if (target == CPU_9900 && lex == C_NAME && strcmp(name, "PROCEDURE") == 0) {
+                /*
+                 ** code MUST be even aligned
+                 ** this won't trigger for inline labels, but I don't
+                 ** think inline labels can become misaligned?
+                 */
+                cpu9900_noop("even");
+            }
+
+            /* Now we can emit the label. Remember, we already get_lex'd */
+            generic_label(temp);
             label_exists = 1;
         }
         if (lex == C_NAME) {
