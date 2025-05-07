@@ -262,15 +262,15 @@ FILVRM
 
 ; Read VRAM - address in R0, CPU data at R2, count in R3
 ; Inline address set to avoid needing to cache r11
-FILVRM
-    ori r0,>4000
+LDIRMV
     swpb r0
     movb r0,@VDPWADR
     swpb r0
     movb r0,@VDPWADR
-; No need to delay after setting a write address - there's no VRAM access
+    swpb r0
+    swpb r0
 !1
-    movb r2,@VDPWDATA
+    movb @VDPDATA,*r2+
     dec r3
     jne -!1
     b *r11
