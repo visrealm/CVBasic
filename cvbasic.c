@@ -6096,6 +6096,7 @@ int main(int argc, char *argv[])
     } else {
         pencil = 0;
     }
+    bytes_used = 0;
 
     /* adding machine constants*/
     {
