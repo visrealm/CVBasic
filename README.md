@@ -5,6 +5,7 @@ Changes:
  * Added support for passing in constants: eg: `cvbasic -DMYCONST=123 -D#MYBIGCONST=12345 in.bas output.asm` (Now in nanochess/CVBasic)
  * Added RDVST native subroutines to pro/epilogues to check VDP status immediately with `USR RDVST`
 
+
 # CVBasic compiler v0.8.0
 *(c) Copyright 2024-2025 Óscar Toledo Gutiérrez*
 *https://nanochess.org/*
@@ -227,6 +228,11 @@ The NABU PC can only use binaries up to 32 kb, joysticks can be used for both co
 
 Many people is developing games using CVBasic, feel free to check some of these examples at the [AtariAge Colecovision Programming forum](https://forums.atariage.com/forum/55-colecovision-programming/)
 
+### VRAM layout / Memory map
+
+A useful reference for the default VRAM layout
+
+![VRAM layout](memmap.png)
 
 ### People using CVBasic
 
