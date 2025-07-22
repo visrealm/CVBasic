@@ -46,6 +46,7 @@ enum supported_machine machine;
 
 enum cpu_target target;
 
+
 /*
  ** Base information about each platform.
  */
@@ -53,43 +54,43 @@ struct console consoles[TOTAL_TARGETS] = {
     /*  RAM   STACK    Size  VDP R   VDP W  PSG */
     {"colecovision","",     "Standard Colecovision (1K RAM)",
         "Colecovision",
-        0x7000, 0x7400, 0x0400,  0xbe,   0xbe, 0xff, 0, CPU_Z80},
+        0x7000, 0x7400, 0x0400,  0xbe,   0xbe, 0xff, 0, CPU_Z80, PSG_SN76489},
     {"sg1000",  "",         "Sega SG-1000/SC-3000 (1K RAM)",
         "Sega SG-1000/SC-3000",
-        0xc000, 0xc400, 0x0400,  0xbe,   0xbe, 0x7f, 1, CPU_Z80},
+        0xc000, 0xc400, 0x0400,  0xbe,   0xbe, 0x7f, 1, CPU_Z80, PSG_SN76489},
     {"msx",     "-ram16",   "MSX (8K RAM), use -ram16 for 16K of RAM,\n        use -konami for Konami mapper instead of ASCII16",
         "MSX",
-        0xe000, 0xf380, 0x1380,  0x98,   0x98, 0,    1, CPU_Z80},
+        0xe000, 0xf380, 0x1380,  0x98,   0x98, 0,    1, CPU_Z80, PSG_AY38910},
     {"sgm",     "",         "Colecovision with Opcode's Super Game Module",
         "Colecovision with SGM",
-        0x7c00, 0x8000, 0x5c00,  0xbe,   0xbe, 0xff, 0, CPU_Z80}, /* Note: Real RAM at 0x2000 */
+        0x7c00, 0x8000, 0x5c00,  0xbe,   0xbe, 0xff, 0, CPU_Z80, PSG_SN76489}, /* Note: Real RAM at 0x2000 */
     {"svi",     "",         "Spectravideo SVI-318/328 (16K of RAM)",
         "Spectravideo SVI-318/328",
-        0xc000, 0xf000, 0x3000,  0x80,   0x84, 0,    1, CPU_Z80},
+        0xc000, 0xf000, 0x3000,  0x80,   0x84, 0,    1, CPU_Z80, PSG_AY38910},
     {"sord",    "",         "Sord M5 (1K RAM)",
         "Sord M5",
-        0x7080, 0x7080, 0x0380,  0x10,   0x10, 0x20, 1, CPU_Z80},
+        0x7080, 0x7080, 0x0380,  0x10,   0x10, 0x20, 1, CPU_Z80, PSG_SN76489},
     {"memotech","-cpm",     "Memotech MTX (64K RAM), generates .run files, use -cpm for .com files",
         "Memotech MTX",
-        0,      0xa000, 0,       0x01,   0x01, 0x06, 1, CPU_Z80},
+        0,      0xa000, 0,       0x01,   0x01, 0x06, 1, CPU_Z80, PSG_SN76489},
     {"creativision","-rom16","Vtech Creativision (Dick Smith's Wizzard/Laser 2001), 6502+1K RAM.",
         "Creativision/Wizzard",
-        0x0050, 0x017f, 0x0400,  0,      0,    0,    1, CPU_6502},
+        0x0050, 0x017f, 0x0400,  0,      0,    0,    1, CPU_6502, PSG_SN76489},
     {"pencil",  "",         "Soundic/Hanimex Pencil II (2K RAM)",
         "Soundic Pencil II",
-        0x7000, 0x7800, 0x0800,  0xbe,   0xbe, 0xff, 0, CPU_Z80},
+        0x7000, 0x7800, 0x0800,  0xbe,   0xbe, 0xff, 0, CPU_Z80, PSG_SN76489},
     {"einstein","",         "Tatung Einstein, generates .com files",
         "Tatung Einstein",
-        0,      0xa000, 0,       0x08,   0x08, 0,    0, CPU_Z80},
+        0,      0xa000, 0,       0x08,   0x08, 0,    0, CPU_Z80, PSG_AY38910},
     {"pv2000",  "",         "Casio PV-2000",
         "Casio PV-2000",
-        0x7600, 0x8000, 0x0a00,0x4000, 0x4000, 0x40, 0, CPU_Z80},
+        0x7600, 0x8000, 0x0a00,0x4000, 0x4000, 0x40, 0, CPU_Z80, PSG_SN76489},
     {"ti994a",  "",         "Texas Instruments TI-99/4A (32K RAM). Support by tursilion",
         "TI-99/4A (support by tursilion)",
-        0x2080, 0x4000, 0x1f80, 0x8800, 0x8c00,0xff, 1, CPU_9900},
+        0x2080, 0x4000, 0x1f80, 0x8800, 0x8c00,0xff, 1, CPU_9900, PSG_SN76489},
     {"nabu",    "-cpm",     "NABU PC (64K RAM)",
         "Nabu PC",
-        0,      0xe000, 0,       0xa0,   0xa0, 0,    1, CPU_Z80},
+        0,      0xe000, 0,       0xa0,   0xa0, 0,    1, CPU_Z80, PSG_AY38910},
     /*
     ** For Sega Master System the stack cannot start at $e000, because
     ** when using Bank Switching writing to $fffd-$ffff destroys $dffd-$dfff
@@ -4993,9 +4994,9 @@ void compile_statement(int check_for_else)
                 if (lex != C_NUM) {
                     emit_error("syntax error in SOUND");
                 } else {
-                    if (value < 3 && (machine == MSX || machine == SVI || machine == EINSTEIN || machine == NABU))
+                    if (value < 3 && (consoles[machine].psg != PSG_SN76489))
                         emit_warning("using SOUND 0-3 with AY-3-8910 target");
-                    else if (value >= 5 && machine != MSX && machine != COLECOVISION_SGM && machine != SVI && machine != SORD && machine != MEMOTECH)
+                    else if (value >= 5 && consoles[machine].psg != PSG_AY38910)
                         emit_warning("using SOUND 5-9 with SN76489 target");
                     switch (value) {
                         case 0:
@@ -6115,6 +6116,22 @@ int main(int argc, char *argv[])
     {
         struct constant *mnc = constant_add(consoles[machine].name);
         mnc->value = 1;
+    }
+    {
+      switch (consoles[machine].psg)
+      {
+        case PSG_SN76489:
+        {
+          struct constant *mnc = constant_add("PSG_SN76489");
+          mnc->value = 1;
+        }
+
+        case PSG_AY38910:
+        {
+          struct constant *mnc = constant_add("PSG_AY38910");
+          mnc->value = 1;
+        }
+      }
     }
 
     /*

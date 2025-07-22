@@ -51,6 +51,15 @@ enum cpu_target {
 extern enum cpu_target target;
 
 /*
+ ** Supported target PSGs
+ */
+enum psg_type {
+    PSG_NONE,
+    PSG_SN76489,
+    PSG_AY38910,
+};
+
+/*
  ** Information about supported machines
  */
 struct console {
@@ -66,6 +75,7 @@ struct console {
     int psg_port;       /* PSG port (SN76489) */
     int int_pin;        /* Indicates if it uses the INT pin for video frame interrupt */
     enum cpu_target target;
+    enum psg_type psg;
 };
 
 extern struct console consoles[TOTAL_TARGETS];
