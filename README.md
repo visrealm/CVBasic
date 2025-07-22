@@ -1,8 +1,9 @@
 # visrealm fork of CVBasic
 
 Changes:
- * Rudimentary preprocessor support. #IF, #ELSE, #ENDIF, #INFO, #WARN, #ERROR
- * Added support for passing in constants: eg: `cvbasic -DMYCONST=123 -D#MYBIGCONST=12345 in.bas output.asm` (Now in nanochess/CVBasic)
+ * Rudimentary preprocessor support. `#IF, #ELIF, #ELSE, #ENDIF, #INFO, #WARN, #ERROR`
+ * Added support for passing in constants. eg: `cvbasic -DMYCONST=123 -D#MYBIGCONST=12345 in.bas output.asm` (Now in nanochess/CVBasic)
+ * Added standard constants based on platform. eg. if `cvbasic --ti994a` then you can use `#IF TI994A ...` or `IF TI994A THEN ...`
  * Added RDVST native subroutines to pro/epilogues to check VDP status immediately with `USR RDVST`
 
 
