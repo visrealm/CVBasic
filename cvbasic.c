@@ -6124,12 +6124,14 @@ int main(int argc, char *argv[])
         {
           struct constant *mnc = constant_add("PSG_SN76489");
           mnc->value = 1;
+          break;
         }
 
         case PSG_AY38910:
         {
           struct constant *mnc = constant_add("PSG_AY38910");
           mnc->value = 1;
+          break;
         }
       }
     }
