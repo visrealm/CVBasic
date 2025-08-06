@@ -574,6 +574,24 @@ define_color:
 update_sprite:
 	ASL A
 	ASL A
+if CVBASIC_DIRECT_SPRITES
+  SEI
+	LDY #$1B
+	JSR SETWRT
+  LDX #0
+.1:
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	LDA sprites,X
+	STA VDP_WRITE_DATA	
+	INX
+  CPX #4
+  BNE .1
+  CLI
+else
 	ORA #$80
 	STA pointer
 	LDA #$01
@@ -590,6 +608,7 @@ update_sprite:
 	INY
 	LDA sprite_data+3
 	STA (pointer),Y
+endif
 	RTS
 
 _abs16:
@@ -1108,6 +1127,9 @@ int_handler:
 	PHA
 	LDA $2001	; VDP interruption clear.
 	STA vdp_status
+
+if CVBASIC_DIRECT_SPRITES
+else  
 	LDA #$1B00
 	LDY #$1B00>>8
 	JSR SETWRT
@@ -1166,6 +1188,7 @@ int_handler:
 	DEY
 	BPL .6
 .5:
+endif
 	JSR BIOS_READ_CONTROLLERS
 
 	LDX joy1_dir
