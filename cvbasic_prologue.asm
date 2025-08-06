@@ -770,8 +770,37 @@ define_sprite:
     endif
 	
 update_sprite:
-    if SMS
 	pop bc		; Pop return address.
+
+if CVBASIC_DIRECT_SPRITES
+	; Direct sprite mode - write immediately to VDP
+	pop af		; 4th. argument in A (frame)
+	ld (sprite_data+3),a
+	pop af		; 3rd. argument in A (Y-coordinate)
+	ld (sprite_data+1),a
+	pop af		; 2nd. argument in A (X-coordinate)
+	ld (sprite_data),a
+	pop af		; 1st. argument in A (sprite number)
+	push bc		; Push return address.
+	
+	; Calculate VDP address: $1B00 + (sprite number * 4)
+	add a,a		; * 2
+	add a,a		; * 4
+	ld e,a
+	ld d,0
+	ld hl,$1B00
+	add hl,de
+	ex de,hl
+	
+	; Copy sprite data directly to VDP
+	ld hl,sprite_data
+	ld bc,4
+	call nmi_off
+	call LDIRVM
+	call nmi_on
+
+else
+if SMS
 	pop de		; 3th. argument in D (Y-coordinate)
 	ld e,a		; 4th. argument in E (frame)
 	pop af		; 2nd. argument in A (X-coordinate)
@@ -787,8 +816,7 @@ update_sprite:
 	ld (hl),d
 	inc l
 	ld (hl),e
-    else
-	pop bc
+else    
 	ld (sprite_data+3),a
 	pop af
 	ld (sprite_data+2),a
@@ -802,14 +830,15 @@ update_sprite:
 	ld de,sprites
 	add a,a
 	add a,a
-    if SORD
+ if SORD
 	or $80
-    endif
+ endif
 	ld e,a
 	ld hl,sprite_data
 	ld bc,4
 	ldir
-    endif
+endif
+endif
 	ret
 
 	; Fast 16-bit multiplication.
@@ -1454,9 +1483,12 @@ nmi_handler:
 	ld (vdp_status),a
     endif
 
-	;
+  ;
 	; Update of sprite attribute table
 	;
+if CVBASIC_DIRECT_SPRITES
+else
+
     if SMS
 	bit 2,(hl)
 	jr z,.4
@@ -1597,6 +1629,7 @@ nmi_handler:
 	jp nz,.6
 .5:
     endif
+endif ; CVBASIC_DIRECT_SPRITES
 
     if COLECO
 	out (JOYSEL),a
