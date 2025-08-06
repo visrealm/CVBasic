@@ -783,13 +783,14 @@ update_sprite:
 
 if CVBASIC_DIRECT_SPRITES
 	; Direct sprite mode - write immediately to VDP
-	pop af		; 4th. argument in A (frame)
-	ld (sprite_data+3),a
-	pop af		; 3rd. argument in A (Y-coordinate)
-	ld (sprite_data+1),a
-	pop af		; 2nd. argument in A (X-coordinate)
-	ld (sprite_data),a
-	pop af		; 1st. argument in A (sprite number)
+	ld (sprite_data+3),a	; 4th argument (frame/color) already in A
+	pop af
+	ld (sprite_data+2),a	; 3rd argument (pattern)
+	pop af  
+	ld (sprite_data+1),a	; 2nd argument (X coordinate)
+	pop af
+	ld (sprite_data),a	; 1st argument (Y coordinate)
+	pop af			; Sprite number
 	push bc		; Push return address.
 	
 	; Calculate VDP address: $1B00 + (sprite number * 4)
