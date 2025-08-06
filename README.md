@@ -4,7 +4,9 @@ Changes:
  * Rudimentary preprocessor support. `#IF, #ELIF, #ELSE, #ENDIF, #INFO, #WARN, #ERROR`
  * Added support for passing in constants. eg: `cvbasic -DMYCONST=123 -D#MYBIGCONST=12345 in.bas output.asm` (Now in nanochess/CVBasic)
  * Added standard constants based on platform. eg. if `cvbasic --ti994a` then you can use `#IF TI994A ...` or `IF TI994A THEN ...`
+ * Added standard constants for the system's PSG so you can: `#if PSG_SN76489 ... ` or `#if PSG_AY38910 ...`
  * Added RDVST native subroutines to pro/epilogues to check VDP status immediately with `USR RDVST`
+ * Added support to define a `CVBASIC_DIRECT_SPRITES` constant in your CVBasic source which will write sprite attributes directly to VRAM rather than write all sprites at each interrupt (similar to `SPRITE FLICKER OFF` but without the large VDP write overhead each frame)
 
 
 # CVBasic compiler v0.8.0
