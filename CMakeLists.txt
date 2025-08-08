@@ -39,3 +39,8 @@
       cpu6502.c
       cpu9900.c
   )
+
+  # Install the executable
+  install(TARGETS ${PROJECT_NAME}
+      RUNTIME DESTINATION bin
+  )
