@@ -6321,6 +6321,7 @@ int main(int argc, char *argv[])
     fprintf(output, "SMS:\tequ %d\n", (machine == SMS) ? 1 : 0);
     fprintf(output, "\n");
     fprintf(output, "CVBASIC_DIRECT_SPRITES:\tequ %d\n", constant_search("CVBASIC_DIRECT_SPRITES") ? 1 : 0);
+    fprintf(output, "CVBASIC_INCLUDE_FONT:\tequ %d\n", constant_search("CVBASIC_INCLUDE_FONT") ? 1 : 0);
     fprintf(output, "CVBASIC_MUSIC_PLAYER:\tequ %d\n", music_used);
     fprintf(output, "CVBASIC_COMPRESSION:\tequ %d\n", compression_used);
     fprintf(output, "CVBASIC_BANK_SWITCHING:\tequ %d\n", bank_switching);

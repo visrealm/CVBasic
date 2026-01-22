@@ -28,8 +28,6 @@ VDP_WRITE_REG:    EQU $3001
 VDP_READ_DATA:    EQU $2000
 VDP_READ_STATUS:  EQU $2001
 
-INCLUDE_FONT_DATA: EQU 0
-
 	;
 	; Platforms supported:
 	; o Vtech Creativision.
@@ -987,7 +985,7 @@ vdp_generic_mode:
 	LDA #$01
 	INX
 	JSR WRTVDP
-IF INCLUDE_FONT_DATA
+IF CVBASIC_INCLUDE_FONT
 	LDA #font_bitmaps
 	LDY #font_bitmaps>>8
 	STA temp
@@ -2077,7 +2075,7 @@ unpack:
 	dw .mode6
     endif
 
-IF INCLUDE_FONT_DATA
+IF CVBASIC_INCLUDE_FONT
 	; Required for Creativision because it doesn't provide an ASCII charset.
 	;
         ; My personal font for TMS9928.

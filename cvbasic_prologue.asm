@@ -42,8 +42,6 @@
 	;
 
 
-INCLUDE_FONT_DATA: equ 0
-
 JOYSEL:	equ $c0
 KEYSEL:	equ $80
 
@@ -1093,6 +1091,8 @@ ay3_freq:
 	jp WRTPSG
     endif
 
+if CVBASIC_INCLUDE_FONT
+
     if SG1000+SMS+SVI+SORD+MEMOTECH+EINSTEIN+PV2000+NABU
 	; Required for SG1000 and Sega Master System as both don't have a BIOS
 	; Required for SVI because we don't have access to BIOS in cartridge.
@@ -1201,6 +1201,7 @@ font_bitmaps:
         db $c0,$20,$20,$10,$20,$20,$c0,$00      ; $7d } 
         db $00,$00,$40,$a8,$10,$00,$00,$00      ; $7e
         db $70,$70,$20,$f8,$20,$70,$50,$00      ; $7f
+    endif
     endif
 
     if SMS
@@ -1313,7 +1314,7 @@ mode_0:
 	ld de,-128
 	add hl,de
     endif
-    if INCLUDE_FONT_DATA
+    if CVBASIC_INCLUDE_FONT
 	ld hl,font_bitmaps
     endif
     if MSX
@@ -1390,7 +1391,7 @@ mode_2:
 	ld de,-128
 	add hl,de
     endif
-    if INCLUDE_FONT_DATA
+    if CVBASIC_INCLUDE_FONT
 	ld hl,font_bitmaps
     endif
     if MSX
