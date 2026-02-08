@@ -7,6 +7,11 @@ Changes:
  * Added standard constants for the system's PSG so you can: `#if PSG_SN76489 ... ` or `#if PSG_AY38910 ...`
  * Added RDVST native subroutines to pro/epilogues to check VDP status immediately with `USR RDVST`
  * Added support to define a `CVBASIC_DIRECT_SPRITES` constant in your CVBasic source which will write sprite attributes directly to VRAM rather than write all sprites at each interrupt (similar to `SPRITE FLICKER OFF` but without the large VDP write overhead each frame)
+ * Added support to define a `CVBASIC_INCLUDE_FONT` constant in your CVBasic source which will remove the default font if set to 0
+ * Extended DEFINE SPRITE/CHAR/COLOR/VRAM statements to support runtime address expressions with `VARPTR` keyword:
+   - `VARPTR #variable` - reads the value from the variable (for indirect addressing, e.g., ROM bank addresses stored in variables)
+   - Works with both PLETTER compressed and non-PLETTER modes
+   - Example: `#ADDR = #datacatalogue(level)` then `DEFINE VRAM PLETTER $1800, size, VARPTR #ADDR`
 
 
 # CVBasic compiler v0.8.0
