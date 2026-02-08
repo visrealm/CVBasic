@@ -697,12 +697,12 @@ mode_0
     li r0,>0002     ; r0 setting
     bl @vdp_generic_mode    ; interrupts are now off
 
-.ifne CVBASIC_INCLUDE_FONT
+    .ifne CVBASIC_INCLUDE_FONT
     li r0,>0100     ; target in VDP memory
     li r2,font_bitmaps  ; CPU memory source
     li r3,>0300     ; number of bytes
     bl @LDIRVM3
-.endif
+    .endif
     
     limi 2
     limi 0
@@ -804,12 +804,12 @@ mode_2
     li r0,>0000     ; r0 setting
     bl @vdp_generic_mode    ; interrupts are now off
 
-.ifne CVBASIC_INCLUDE_FONT
+    .ifne CVBASIC_INCLUDE_FONT
     li r0,>0100
     li r2,font_bitmaps
     li r3,>0300
     bl @LDIRVM      ; load character set
-.endif
+    .endif
 
     limi 2
     limi 0
@@ -1826,7 +1826,7 @@ unpack
 ; with better lowercase letters, also I made a proper
 ; AT sign.
 ;
-.ifne CVBASIC_INCLUDE_FONT
+   .ifne CVBASIC_INCLUDE_FONT
 font_bitmaps
    byte >00,>00,>00,>00,>00,>00,>00,>00      ; >20 space
    byte >20,>20,>20,>20,>20,>00,>20,>00      ; >21 !
@@ -1924,7 +1924,7 @@ font_bitmaps
    byte >c0,>20,>20,>10,>20,>20,>c0,>00      ; >7d } 
    byte >00,>00,>40,>a8,>10,>00,>00,>00      ; >7e
    byte >70,>70,>20,>f8,>20,>70,>50,>00      ; >7f
-.endif
+  .endif
 
 ; The stack is simulated using R10. It's not used in
 ; these functions but the compiled code will need it.
