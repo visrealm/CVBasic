@@ -3647,16 +3647,20 @@ void compile_statement(int check_for_else)
                         emit_error("missing label in DEFINE");
                     } else if (strcmp(name, "VARPTR") == 0) {
                         source = evaluate_save_expression(1, TYPE_16);
-                        node_generate(length, 0);
+                        if (!pletter)
+                            node_generate(length, 0);
                         if (target == CPU_6502) {
-                            cpu6502_noop("PHA");
+                            if (!pletter)
+                                cpu6502_noop("PHA");
                             node_generate(source, 0);
                             cpu6502_1op("STA", "temp");
                             cpu6502_1op("STY", "temp+1");
-                            cpu6502_noop("PLA");
+                            if (!pletter)
+                                cpu6502_noop("PLA");
                         } else if (target == CPU_9900) {
                             /* char in r4, data in r0, count in r5 */
-                            cpu9900_2op("mov","r0","r5");
+                            if (!pletter)
+                                cpu9900_2op("mov","r0","r5");
                             node_generate(source, 0);
                         } else {
                             if ((source->regs & REG_A) != 0)
@@ -3666,9 +3670,11 @@ void compile_statement(int check_for_else)
                                 cpuz80_1op("POP", "AF");
                         }
                     } else {
-                        node_generate(length, 0);
+                        if (!pletter)
+                            node_generate(length, 0);
                         if (target == CPU_6502) {
-                            cpu6502_noop("PHA");
+                            if (!pletter)
+                                cpu6502_noop("PHA");
                             strcpy(temp, "#" LABEL_PREFIX);
                             strcat(temp, name);
                             cpu6502_1op("LDA", temp);
@@ -3676,10 +3682,12 @@ void compile_statement(int check_for_else)
                             strcat(temp, ">>8");
                             cpu6502_1op("LDA", temp);
                             cpu6502_1op("STA", "temp+1");
-                            cpu6502_noop("PLA");
+                            if (!pletter)
+                                cpu6502_noop("PLA");
                         } else if (target == CPU_9900) {
                             /* char in r4, data in r0, count in r5 */
-                            cpu9900_2op("mov","r0","r5");
+                            if (!pletter)
+                                cpu9900_2op("mov","r0","r5");
                             strcpy(temp, LABEL_PREFIX);
                             strcat(temp, name);
                             cpu9900_2op("li","r0",temp);
@@ -3730,30 +3738,38 @@ void compile_statement(int check_for_else)
                             node_generate(target2, 0);
                             cpu6502_1op("STA", "pointer");
                             cpu6502_1op("STY", "pointer+1");
-                            node_generate(length, 0);
-                            cpu6502_noop("PHA");
-                            cpu6502_noop("TYA");
-                            cpu6502_noop("PHA");
+                            if (!pletter) {
+                                node_generate(length, 0);
+                                cpu6502_noop("PHA");
+                                cpu6502_noop("TYA");
+                                cpu6502_noop("PHA");
+                            }
                             node_generate(source, 0);
                             cpu6502_1op("STA", "temp");
                             cpu6502_1op("STY", "temp+1");
-                            cpu6502_noop("PLA");
-                            cpu6502_1op("STA", "temp2+1");
-                            cpu6502_noop("PLA");
-                            cpu6502_1op("STA", "temp2");
+                            if (!pletter) {
+                                cpu6502_noop("PLA");
+                                cpu6502_1op("STA", "temp2+1");
+                                cpu6502_noop("PLA");
+                                cpu6502_1op("STA", "temp2");
+                            }
                         } else if (target == CPU_9900) {
                             node_generate(target2, 0);
                             cpu9900_2op("mov","r0","r4");   /* save it off, cause we need it at the end in r0 */
-                            node_generate(length, 0);
-                            cpu9900_2op("mov","r0","r5");
+                            if (!pletter) {
+                                node_generate(length, 0);
+                                cpu9900_2op("mov","r0","r5");
+                            }
                             node_generate(source, 0);
                         } else {
-                            node_generate(length, 0);
-                            if (((target2->regs | source->regs) & REG_BC) == 0) {
-                                cpuz80_2op("LD", "B", "H");
-                                cpuz80_2op("LD", "C", "L");
-                            } else {
-                                cpuz80_1op("PUSH", "HL");
+                            if (!pletter) {
+                                node_generate(length, 0);
+                                if (((target2->regs | source->regs) & REG_BC) == 0) {
+                                    cpuz80_2op("LD", "B", "H");
+                                    cpuz80_2op("LD", "C", "L");
+                                } else {
+                                    cpuz80_1op("PUSH", "HL");
+                                }
                             }
                             node_generate(target2, 0);
                             if ((source->regs & REG_DE) == 0) {
@@ -3764,8 +3780,10 @@ void compile_statement(int check_for_else)
                                 node_generate(source, 0);
                                 cpuz80_1op("POP", "DE");
                             }
-                            if (((target2->regs | source->regs) & REG_BC) != 0)
-                                cpuz80_1op("POP", "BC");
+                            if (!pletter) {
+                                if (((target2->regs | source->regs) & REG_BC) != 0)
+                                    cpuz80_1op("POP", "BC");
+                            }
                         }
                     } else {
                         source = NULL;
