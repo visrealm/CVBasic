@@ -3516,28 +3516,64 @@ void compile_statement(int check_for_else)
                             get_lex();
                         else
                             emit_error("missing comma in DEFINE");
-                        if (lex != C_NAME) {
-                            emit_error("missing label in DEFINE");
-                        } else {
-                            if (target == CPU_6502) {
-                                strcpy(temp, "#" LABEL_PREFIX);
+                        if (lex == C_END) {
+                            emit_error("missing source address in DEFINE");
+                        } else if (lex == C_NAME) {
+                            struct label *check_label = label_search(name);
+                            if (lex_sneak_peek() != '(' && (check_label == NULL || (check_label->used & LABEL_IS_VARIABLE) == 0)) {
+                                /* Simple label name (not a variable) - treat as data label reference */
+                                strcpy(temp, LABEL_PREFIX);
                                 strcat(temp, name);
-                                cpu6502_1op("LDA", temp);
-                                strcat(temp, ">>8");
-                                cpu6502_1op("LDY", temp);
+                                if (target == CPU_6502) {
+                                    strcpy(temp, "#" LABEL_PREFIX);
+                                    strcat(temp, name);
+                                    cpu6502_1op("LDA", temp);
+                                    strcat(temp, ">>8");
+                                    cpu6502_1op("LDY", temp);
+                                    cpu6502_1op("STA", "temp");
+                                    cpu6502_1op("STY", "temp+1");
+                                } else if (target == CPU_9900) {
+                                    strcpy(temp, LABEL_PREFIX);
+                                    strcat(temp, name);
+                                    cpu9900_2op("li", "r2", temp);
+                                    cpu9900_2op("mov","r4","r1");
+                                } else {
+                                    strcpy(temp, LABEL_PREFIX);
+                                    strcat(temp, name);
+                                    cpuz80_2op("LD", "HL", temp);
+                                }
+                                get_lex();
+                            } else {
+                                /* Variable or expression - evaluate at runtime */
+                                struct node *sprite_source = evaluate_save_expression(0, TYPE_16);
+                                if (target == CPU_6502) {
+                                    node_generate(sprite_source, 0);
+                                    cpu6502_1op("STA", "temp");
+                                    cpu6502_1op("STY", "temp+1");
+                                } else if (target == CPU_9900) {
+                                    node_generate(sprite_source, 0);
+                                    cpu9900_2op("mov","r0","r2");
+                                    cpu9900_2op("mov","r4","r1");
+                                } else {
+                                    node_generate(sprite_source, 0);
+                                }
+                                node_delete(sprite_source);
+                            }
+                        } else {
+                            /* Expression - evaluate at runtime */
+                            struct node *sprite_source = evaluate_save_expression(0, TYPE_16);
+                            if (target == CPU_6502) {
+                                node_generate(sprite_source, 0);
                                 cpu6502_1op("STA", "temp");
                                 cpu6502_1op("STY", "temp+1");
                             } else if (target == CPU_9900) {
-                                strcpy(temp, LABEL_PREFIX);
-                                strcat(temp, name);
-                                cpu9900_2op("li", "r2", temp);
+                                node_generate(sprite_source, 0);
+                                cpu9900_2op("mov","r0","r2");
                                 cpu9900_2op("mov","r4","r1");
                             } else {
-                                strcpy(temp, LABEL_PREFIX);
-                                strcat(temp, name);
-                                cpuz80_2op("LD", "HL", temp);
+                                node_generate(sprite_source, 0);
                             }
-                            get_lex();
+                            node_delete(sprite_source);
                         }
                         generic_call("unpack");
                         compression_used = 1;
@@ -3562,9 +3598,10 @@ void compile_statement(int check_for_else)
                             get_lex();
                         else
                             emit_error("missing comma in DEFINE");
-                        if (lex != C_NAME) {
-                            emit_error("missing label in DEFINE");
-                        } else if (strcmp(name, "VARPTR") == 0) {
+                        if (lex == C_END) {
+                            emit_error("missing source address in DEFINE");
+                            source = NULL;
+                        } else if (lex == C_NAME && strcmp(name, "VARPTR") == 0) {
                             source = evaluate_save_expression(1, TYPE_16);  /* CPU address (variable) */
                             node_generate(length, 0);
                             if (target == CPU_6502) {
@@ -3584,28 +3621,25 @@ void compile_statement(int check_for_else)
                                     cpuz80_1op("POP", "AF");
                             }
                         } else {
-                            node_generate(length, 0);   /* CPU address (immediate) */
+                            /* Variable or expression - evaluate at runtime */
+                            source = evaluate_save_expression(0, TYPE_16);
+                            node_generate(length, 0);
                             if (target == CPU_6502) {
                                 cpu6502_noop("PHA");
-                                strcpy(temp, "#" LABEL_PREFIX);
-                                strcat(temp, name);
-                                cpu6502_1op("LDA", temp);
+                                node_generate(source, 0);
                                 cpu6502_1op("STA", "temp");
-                                strcat(temp, ">>8");
-                                cpu6502_1op("LDA", temp);
-                                cpu6502_1op("STA", "temp+1");
+                                cpu6502_1op("STY", "temp+1");
                                 cpu6502_noop("PLA");
                             } else if (target == CPU_9900) {
                                 cpu9900_2op("mov","r0","r5");
-                                strcpy(temp, LABEL_PREFIX);
-                                strcat(temp, name);
-                                cpu9900_2op("li","r0",temp);
+                                node_generate(source, 0);
                             } else {
-                                strcpy(temp, LABEL_PREFIX);
-                                strcat(temp, name);
-                                cpuz80_2op("LD", "HL", temp);
+                                if ((source->regs & REG_A) != 0)
+                                    cpuz80_1op("PUSH", "AF");
+                                node_generate(source, 0);
+                                if ((source->regs & REG_A) != 0)
+                                    cpuz80_1op("POP", "AF");
                             }
-                            get_lex();
                         }
                         generic_call("define_sprite");
                         node_delete(length);
@@ -3643,9 +3677,10 @@ void compile_statement(int check_for_else)
                         get_lex();
                     else
                         emit_error("missing comma in DEFINE");
-                    if (lex != C_NAME) {
-                        emit_error("missing label in DEFINE");
-                    } else if (strcmp(name, "VARPTR") == 0) {
+                    if (lex == C_END) {
+                        emit_error("missing source address in DEFINE");
+                        source = NULL;
+                    } else if (lex == C_NAME && strcmp(name, "VARPTR") == 0) {
                         source = evaluate_save_expression(1, TYPE_16);
                         if (!pletter)
                             node_generate(length, 0);
@@ -3669,34 +3704,89 @@ void compile_statement(int check_for_else)
                             if ((source->regs & REG_A) != 0)
                                 cpuz80_1op("POP", "AF");
                         }
+                    } else if (lex == C_NAME) {
+                        struct label *check_label = label_search(name);
+                        if (lex_sneak_peek() != '(' && (check_label == NULL || (check_label->used & LABEL_IS_VARIABLE) == 0)) {
+                            /* Simple label name (not a variable) - treat as data label reference */
+                            source = NULL;
+                            if (!pletter)
+                                node_generate(length, 0);
+                            if (target == CPU_6502) {
+                                if (!pletter)
+                                    cpu6502_noop("PHA");
+                                strcpy(temp, "#" LABEL_PREFIX);
+                                strcat(temp, name);
+                                cpu6502_1op("LDA", temp);
+                                cpu6502_1op("STA", "temp");
+                                strcat(temp, ">>8");
+                                cpu6502_1op("LDA", temp);
+                                cpu6502_1op("STA", "temp+1");
+                                if (!pletter)
+                                    cpu6502_noop("PLA");
+                            } else if (target == CPU_9900) {
+                                /* char in r4, data in r0, count in r5 */
+                                if (!pletter)
+                                    cpu9900_2op("mov","r0","r5");
+                                strcpy(temp, LABEL_PREFIX);
+                                strcat(temp, name);
+                                cpu9900_2op("li","r0",temp);
+                            } else {
+                                strcpy(temp, LABEL_PREFIX);
+                                strcat(temp, name);
+                                cpuz80_2op("LD", "HL", temp);
+                            }
+                            get_lex();
+                        } else {
+                            /* Variable or expression - evaluate at runtime */
+                            source = evaluate_save_expression(0, TYPE_16);
+                            if (!pletter)
+                                node_generate(length, 0);
+                            if (target == CPU_6502) {
+                                if (!pletter)
+                                    cpu6502_noop("PHA");
+                                node_generate(source, 0);
+                                cpu6502_1op("STA", "temp");
+                                cpu6502_1op("STY", "temp+1");
+                                if (!pletter)
+                                    cpu6502_noop("PLA");
+                            } else if (target == CPU_9900) {
+                                /* char in r4, data in r0, count in r5 */
+                                if (!pletter)
+                                    cpu9900_2op("mov","r0","r5");
+                                node_generate(source, 0);
+                            } else {
+                                if ((source->regs & REG_A) != 0)
+                                    cpuz80_1op("PUSH", "AF");
+                                node_generate(source, 0);
+                                if ((source->regs & REG_A) != 0)
+                                    cpuz80_1op("POP", "AF");
+                            }
+                        }
                     } else {
+                        /* Expression - evaluate at runtime */
+                        source = evaluate_save_expression(0, TYPE_16);
                         if (!pletter)
                             node_generate(length, 0);
                         if (target == CPU_6502) {
                             if (!pletter)
                                 cpu6502_noop("PHA");
-                            strcpy(temp, "#" LABEL_PREFIX);
-                            strcat(temp, name);
-                            cpu6502_1op("LDA", temp);
+                            node_generate(source, 0);
                             cpu6502_1op("STA", "temp");
-                            strcat(temp, ">>8");
-                            cpu6502_1op("LDA", temp);
-                            cpu6502_1op("STA", "temp+1");
+                            cpu6502_1op("STY", "temp+1");
                             if (!pletter)
                                 cpu6502_noop("PLA");
                         } else if (target == CPU_9900) {
                             /* char in r4, data in r0, count in r5 */
                             if (!pletter)
                                 cpu9900_2op("mov","r0","r5");
-                            strcpy(temp, LABEL_PREFIX);
-                            strcat(temp, name);
-                            cpu9900_2op("li","r0",temp);
+                            node_generate(source, 0);
                         } else {
-                            strcpy(temp, LABEL_PREFIX);
-                            strcat(temp, name);
-                            cpuz80_2op("LD", "HL", temp);
+                            if ((source->regs & REG_A) != 0)
+                                cpuz80_1op("PUSH", "AF");
+                            node_generate(source, 0);
+                            if ((source->regs & REG_A) != 0)
+                                cpuz80_1op("POP", "AF");
                         }
-                        get_lex();
                     }
                     if (pletter) {
                         generic_call(color ? "define_color_unpack" : "define_char_unpack");
@@ -3729,10 +3819,10 @@ void compile_statement(int check_for_else)
                         get_lex();
                     else
                         emit_error("missing comma in DEFINE");
-                    if (lex != C_NAME) {
-                        emit_error("missing label in DEFINE");
+                    if (lex == C_END) {
+                        emit_error("missing source address in DEFINE");
                         source = NULL;
-                    } else if (strcmp(name, "VARPTR") == 0) {
+                    } else if (lex == C_NAME && strcmp(name, "VARPTR") == 0) {
                         source = evaluate_save_expression(1, TYPE_16);
                         if (target == CPU_6502) {
                             node_generate(target2, 0);
@@ -3785,40 +3875,136 @@ void compile_statement(int check_for_else)
                                     cpuz80_1op("POP", "BC");
                             }
                         }
+                    } else if (lex == C_NAME) {
+                        struct label *check_label = label_search(name);
+                        if (lex_sneak_peek() != '(' && (check_label == NULL || (check_label->used & LABEL_IS_VARIABLE) == 0)) {
+                            /* Simple label name (not a variable) - treat as data label reference */
+                            source = NULL;
+                            if (target == CPU_6502) {
+                                if (!pletter) {
+                                    node_generate(length, 0);
+                                    cpu6502_noop("PHA");
+                                    cpu6502_noop("TYA");
+                                    cpu6502_noop("PHA");
+                                }
+                            } else if (target == CPU_9900) {
+                                if (!pletter) {
+                                    node_generate(length, 0);
+                                    cpu9900_2op("mov","r0","r5");
+                                }
+                            } else {
+                                if (!pletter) {
+                                    node_generate(length, 0);
+                                    if ((target2->regs & REG_BC) == 0) {
+                                        cpuz80_2op("LD", "B", "H");
+                                        cpuz80_2op("LD", "C", "L");
+                                    } else {
+                                        cpuz80_1op("PUSH", "HL");
+                                    }
+                                }
+                            }
+                            node_generate(target2, 0);
+                            if (target == CPU_6502) {
+                                cpu6502_1op("STA", "pointer");
+                                cpu6502_1op("STY", "pointer+1");
+                                strcpy(temp, "#" LABEL_PREFIX);
+                                strcat(temp, name);
+                                cpu6502_1op("LDA", temp);
+                                strcat(temp, ">>8");
+                                cpu6502_1op("LDY", temp);
+                                cpu6502_1op("STA", "temp");
+                                cpu6502_1op("STY", "temp+1");
+                                if (!pletter) {
+                                    cpu6502_noop("PLA");
+                                    cpu6502_1op("STA", "temp2+1");
+                                    cpu6502_noop("PLA");
+                                    cpu6502_1op("STA", "temp2");
+                                }
+                            } else if (target == CPU_9900) {
+                                cpu9900_2op("mov","r0","r4");
+                                strcpy(temp, LABEL_PREFIX);
+                                strcat(temp, name);
+                                cpu9900_2op("li","r0",temp);
+                            } else {
+                                cpuz80_2op("EX", "DE", "HL");
+                                strcpy(temp, LABEL_PREFIX);
+                                strcat(temp, name);
+                                cpuz80_2op("LD", "HL", temp);
+                                if (!pletter) {
+                                    if ((target2->regs & REG_BC) != 0)
+                                        cpuz80_1op("POP", "BC");
+                                }
+                            }
+                            get_lex();
+                        } else {
+                            /* Variable or expression - evaluate at runtime */
+                            source = evaluate_save_expression(0, TYPE_16);
+                            if (target == CPU_6502) {
+                                node_generate(target2, 0);
+                                cpu6502_1op("STA", "pointer");
+                                cpu6502_1op("STY", "pointer+1");
+                                if (!pletter) {
+                                    node_generate(length, 0);
+                                    cpu6502_noop("PHA");
+                                    cpu6502_noop("TYA");
+                                    cpu6502_noop("PHA");
+                                }
+                                node_generate(source, 0);
+                                cpu6502_1op("STA", "temp");
+                                cpu6502_1op("STY", "temp+1");
+                                if (!pletter) {
+                                    cpu6502_noop("PLA");
+                                    cpu6502_1op("STA", "temp2+1");
+                                    cpu6502_noop("PLA");
+                                    cpu6502_1op("STA", "temp2");
+                                }
+                            } else if (target == CPU_9900) {
+                                node_generate(target2, 0);
+                                cpu9900_2op("mov","r0","r4");   /* save VDP address in r4 */
+                                if (!pletter) {
+                                    node_generate(length, 0);
+                                    cpu9900_2op("mov","r0","r5");
+                                }
+                                node_generate(source, 0);
+                            } else {
+                                if (!pletter) {
+                                    node_generate(length, 0);
+                                    if (((target2->regs | source->regs) & REG_BC) == 0) {
+                                        cpuz80_2op("LD", "B", "H");
+                                        cpuz80_2op("LD", "C", "L");
+                                    } else {
+                                        cpuz80_1op("PUSH", "HL");
+                                    }
+                                }
+                                node_generate(target2, 0);
+                                if ((source->regs & REG_DE) == 0) {
+                                    cpuz80_2op("EX", "DE", "HL");
+                                    node_generate(source, 0);
+                                } else {
+                                    cpuz80_1op("PUSH", "HL");
+                                    node_generate(source, 0);
+                                    cpuz80_1op("POP", "DE");
+                                }
+                                if (!pletter) {
+                                    if (((target2->regs | source->regs) & REG_BC) != 0)
+                                        cpuz80_1op("POP", "BC");
+                                }
+                            }
+                        }
                     } else {
-                        source = NULL;
+                        /* Expression - evaluate at runtime */
+                        source = evaluate_save_expression(0, TYPE_16);
                         if (target == CPU_6502) {
+                            node_generate(target2, 0);
+                            cpu6502_1op("STA", "pointer");
+                            cpu6502_1op("STY", "pointer+1");
                             if (!pletter) {
                                 node_generate(length, 0);
                                 cpu6502_noop("PHA");
                                 cpu6502_noop("TYA");
                                 cpu6502_noop("PHA");
                             }
-                        } else if (target == CPU_9900) {
-                            if (!pletter) {
-                                node_generate(length, 0);
-                                cpu9900_2op("mov","r0","r5");
-                            }
-                        } else {
-                            if (!pletter) {
-                                node_generate(length, 0);
-                                if ((target2->regs & REG_BC) == 0) {
-                                    cpuz80_2op("LD", "B", "H");
-                                    cpuz80_2op("LD", "C", "L");
-                                } else {
-                                    cpuz80_1op("PUSH", "HL");
-                                }
-                            }
-                        }
-                        node_generate(target2, 0);
-                        if (target == CPU_6502) {
-                            cpu6502_1op("STA", "pointer");
-                            cpu6502_1op("STY", "pointer+1");
-                            strcpy(temp, "#" LABEL_PREFIX);
-                            strcat(temp, name);
-                            cpu6502_1op("LDA", temp);
-                            strcat(temp, ">>8");
-                            cpu6502_1op("LDY", temp);
+                            node_generate(source, 0);
                             cpu6502_1op("STA", "temp");
                             cpu6502_1op("STY", "temp+1");
                             if (!pletter) {
@@ -3828,21 +4014,37 @@ void compile_statement(int check_for_else)
                                 cpu6502_1op("STA", "temp2");
                             }
                         } else if (target == CPU_9900) {
-                            cpu9900_2op("mov","r0","r4");
-                            strcpy(temp, LABEL_PREFIX);
-                            strcat(temp, name);
-                            cpu9900_2op("li","r0",temp);
-                        } else {
-                            cpuz80_2op("EX", "DE", "HL");
-                            strcpy(temp, LABEL_PREFIX);
-                            strcat(temp, name);
-                            cpuz80_2op("LD", "HL", temp);
+                            node_generate(target2, 0);
+                            cpu9900_2op("mov","r0","r4");   /* save VDP address in r4 */
                             if (!pletter) {
-                                if ((target2->regs & REG_BC) != 0)
+                                node_generate(length, 0);
+                                cpu9900_2op("mov","r0","r5");
+                            }
+                            node_generate(source, 0);
+                        } else {
+                            if (!pletter) {
+                                node_generate(length, 0);
+                                if (((target2->regs | source->regs) & REG_BC) == 0) {
+                                    cpuz80_2op("LD", "B", "H");
+                                    cpuz80_2op("LD", "C", "L");
+                                } else {
+                                    cpuz80_1op("PUSH", "HL");
+                                }
+                            }
+                            node_generate(target2, 0);
+                            if ((source->regs & REG_DE) == 0) {
+                                cpuz80_2op("EX", "DE", "HL");
+                                node_generate(source, 0);
+                            } else {
+                                cpuz80_1op("PUSH", "HL");
+                                node_generate(source, 0);
+                                cpuz80_1op("POP", "DE");
+                            }
+                            if (!pletter) {
+                                if (((target2->regs | source->regs) & REG_BC) != 0)
                                     cpuz80_1op("POP", "BC");
                             }
                         }
-                        get_lex();
                     }
                     if (pletter) {
                         if (target == CPU_9900) {
