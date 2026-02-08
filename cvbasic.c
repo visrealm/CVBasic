@@ -3645,7 +3645,7 @@ void compile_statement(int check_for_else)
                         emit_error("missing comma in DEFINE");
                     if (lex != C_NAME) {
                         emit_error("missing label in DEFINE");
-                    } else if (!pletter && strcmp(name, "VARPTR") == 0) {
+                    } else if (strcmp(name, "VARPTR") == 0) {
                         source = evaluate_save_expression(1, TYPE_16);
                         node_generate(length, 0);
                         if (target == CPU_6502) {
@@ -3724,7 +3724,7 @@ void compile_statement(int check_for_else)
                     if (lex != C_NAME) {
                         emit_error("missing label in DEFINE");
                         source = NULL;
-                    } else if (!pletter && strcmp(name, "VARPTR") == 0) {
+                    } else if (strcmp(name, "VARPTR") == 0) {
                         source = evaluate_save_expression(1, TYPE_16);
                         if (target == CPU_6502) {
                             node_generate(target2, 0);
