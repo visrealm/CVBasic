@@ -654,6 +654,8 @@ void cpu9900_node_generate(struct node *node, int decision)
             strcpy(temp, "@");
             strcat(temp, LABEL_PREFIX);
             strcat(temp, node->label->name);
+            if ((node->label->used & MAIN_TYPE) == TYPE_16)
+                strcat(temp, "+1");  /* Access low byte of 16-bit variable (big-endian) */
             cpu9900_2op("movb", temp, "r0");
             break;
         case N_LOAD16:  /* Load 16-bit value from address */
@@ -673,6 +675,8 @@ void cpu9900_node_generate(struct node *node, int decision)
         case N_PEEK8:   /* Load 8-bit content */
             if (node->left->type == N_ADDR) {   /* Optimize address */
                 node_get_label(node->left, ADDRESS);
+                if ((node->left->label->used & MAIN_TYPE) == TYPE_16)
+                    strcat(temp, "+1");  /* Access low byte of 16-bit variable (big-endian) */
                 cpu9900_2op("movb", temp, "r0");
                 break;
             }
@@ -962,6 +966,8 @@ void cpu9900_node_generate(struct node *node, int decision)
             if (node->right->type == N_ADDR) {
                 cpu9900_node_generate(node->left, 0);
                 node_get_label(node->right, ADDRESS);
+                if ((node->right->label->used & MAIN_TYPE) == TYPE_16)
+                    strcat(temp, "+1");  /* Access low byte of 16-bit variable (big-endian) */
                 cpu9900_2op("movb", "r0", temp);
                 break;
             }
