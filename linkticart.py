@@ -28,15 +28,22 @@ f.close()
 # first 80 bytes are the cartridge header
 hdr = data[0:80]
 
+def update_cart_name(header_data, cart_name):
+    """Update all instances of CVBASIC GAME in the header"""
+    original = b'CVBASIC GAME        *'
+    if original in header_data:
+        name_bytes = bytearray(cart_name, 'utf-8')
+        return header_data.replace(original, name_bytes)
+    return header_data
+
+cart_name = None
 if (len(sys.argv) > 3):
-    name = sys.argv[3].upper()
-    while (len(name)<20):
-        name += ' '
-    p = hdr.find(b'CVBASIC GAME        *')
-    if p == -1:
+    cart_name = sys.argv[3].upper()
+    while (len(cart_name)<20):
+        cart_name += ' '
+    hdr = update_cart_name(hdr, cart_name)
+    if b'CVBASIC GAME' in hdr:
         print('WARNING: Could not find cart name to set it')
-    else:
-        hdr = hdr[0:p] + bytearray(name, 'utf-8') + hdr[p+20:]
 
 # after 16k starts the RAM data
 ram = data[16384:]
@@ -76,6 +83,11 @@ else:
             while len(data)<8192:
                 data += b'\xff'
         f.close()
+        # Update cart name in this bank's header if present
+        if cart_name and len(data) >= 80 and b'CVBASIC GAME' in data[0:80]:
+            bank_hdr = data[0:80]
+            bank_hdr = update_cart_name(bank_hdr, cart_name)
+            data = bank_hdr + data[80:]
         fo.write(data)
         sz+=1
         file = namebase + str(sz).zfill(zerocnt) + '.bin'
@@ -102,13 +114,3 @@ while sz<desired:
 
 fo.close()
 print('Wrote final cart size:',sz*8,'KB')
-
-
-
-
-
-
-
-
-
-
