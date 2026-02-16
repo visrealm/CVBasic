@@ -3519,8 +3519,46 @@ void compile_statement(int check_for_else)
                         if (lex == C_END) {
                             emit_error("missing source address in DEFINE");
                         } else if (lex == C_NAME && strcmp(name, "VARPTR") == 0) {
-                            /* VARPTR - evaluate expression at runtime */
-                            struct node *sprite_source = evaluate_save_expression(1, TYPE_16);
+                            /* Check if array subscript follows */
+                            struct node *sprite_source;
+                            get_lex();
+                            if (lex == C_NAME && lex_sneak_peek() == '(') {
+                                /* Array subscript - compute address manually */
+                                struct label *label;
+                                int type2;
+                                struct node *addr;
+                                struct node *index;
+
+                                label = array_search(name);
+                                if (label == NULL) {
+                                    label = label_search(name);
+                                    if (label == NULL) {
+                                        label = label_add(name);
+                                    }
+                                }
+                                get_lex();
+                                if (lex != C_LPAREN)
+                                    emit_error("missing left parenthesis");
+                                else
+                                    get_lex();
+                                index = evaluate_level_0(&type2);
+                                if (lex != C_RPAREN)
+                                    emit_error("missing right parenthesis");
+                                else
+                                    get_lex();
+                                addr = node_create(N_ADDR, 0, NULL, NULL);
+                                addr->label = label;
+                                if ((type2 & MAIN_TYPE) == TYPE_8)
+                                    index = node_create(N_EXTEND8, 0, index, NULL);
+                                if (label->name[0] == '#') {
+                                    index = node_create(N_MUL16, 0, index,
+                                               node_create(N_NUM16, 2, NULL, NULL));
+                                }
+                                sprite_source = node_create(N_PLUS16, 0, addr, index);
+                            } else {
+                                /* Plain variable - evaluate to get value */
+                                sprite_source = evaluate_save_expression(0, TYPE_16);
+                            }
                             if (target == CPU_6502) {
                                 node_generate(sprite_source, 0);
                                 cpu6502_1op("STA", "temp");
@@ -3908,25 +3946,14 @@ void compile_statement(int check_for_else)
                         } else {
                             if (!pletter) {
                                 node_generate(length, 0);
-                                if (((target2->regs | source->regs) & REG_BC) == 0) {
-                                    cpuz80_2op("LD", "B", "H");
-                                    cpuz80_2op("LD", "C", "L");
-                                } else {
-                                    cpuz80_1op("PUSH", "HL");
-                                }
+                                cpuz80_1op("PUSH", "HL");
                             }
                             node_generate(target2, 0);
-                            if ((source->regs & REG_DE) == 0) {
-                                cpuz80_2op("EX", "DE", "HL");
-                                node_generate(source, 0);
-                            } else {
-                                cpuz80_1op("PUSH", "HL");
-                                node_generate(source, 0);
-                                cpuz80_1op("POP", "DE");
-                            }
+                            cpuz80_1op("PUSH", "HL");
+                            node_generate(source, 0);
+                            cpuz80_1op("POP", "DE");
                             if (!pletter) {
-                                if (((target2->regs | source->regs) & REG_BC) != 0)
-                                    cpuz80_1op("POP", "BC");
+                                cpuz80_1op("POP", "BC");
                             }
                         }
                     } else if (lex == C_NAME) {
