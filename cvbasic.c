@@ -3672,11 +3672,9 @@ void compile_statement(int check_for_else)
                                 cpu9900_2op("mov","r0","r5");
                                 node_generate(source, 0);
                             } else {
-                                if ((source->regs & REG_A) != 0)
-                                    cpuz80_1op("PUSH", "AF");
+                                cpuz80_1op("PUSH", "AF");
                                 node_generate(source, 0);
-                                if ((source->regs & REG_A) != 0)
-                                    cpuz80_1op("POP", "AF");
+                                cpuz80_1op("POP", "AF");
                             }
                         } else if (lex == C_NAME) {
                             /* Simple label name - treat as data label reference */
@@ -3802,10 +3800,10 @@ void compile_statement(int check_for_else)
                                 cpu9900_2op("mov","r0","r5");
                             node_generate(source, 0);
                         } else {
-                            if ((source->regs & REG_A) != 0)
+                            if (!pletter)
                                 cpuz80_1op("PUSH", "AF");
                             node_generate(source, 0);
-                            if ((source->regs & REG_A) != 0)
+                            if (!pletter)
                                 cpuz80_1op("POP", "AF");
                         }
                     } else if (lex == C_NAME) {
