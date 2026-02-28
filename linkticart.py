@@ -32,7 +32,7 @@ def update_cart_name(header_data, cart_name):
     """Update all instances of CVBASIC GAME in the header"""
     original = b'CVBASIC GAME        *'
     if original in header_data:
-        name_bytes = bytearray(cart_name, 'utf-8')
+        name_bytes = bytearray(cart_name, 'utf-8') + b'*'
         return header_data.replace(original, name_bytes)
     return header_data
 
